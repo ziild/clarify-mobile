@@ -27,3 +27,23 @@ export const ANONYMOUS_STUDENT_LABEL = "Anonymous Student";
 /** Convenience checks used to show or hide controls. The backend still enforces permissions. */
 export const isStudent = (role: UserRole): boolean => role === "student";
 export const isFaculty = (role: UserRole): boolean => role === "faculty";
+
+/**
+ * Hex values for props that cannot use a className (spinner color, placeholder color).
+ * Keep these in sync with the tokens in src/global.css.
+ */
+export const USTP_COLORS = {
+  navy: "#1a1851",
+  gold: "#fcb315",
+  orange: "#ff9718",
+  cream: "#FFFAF2",
+  text: "#031c2e",
+  blue: "#0d4a77",
+  sky: "#329dea",
+} as const;
+
+/** Neutral colors used by shared components (assumption: not defined in the playbook). */
+export const UI_COLORS = {
+  white: "#ffffff",
+  placeholder: "#6b7280",
+} as const;
