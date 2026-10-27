@@ -213,6 +213,8 @@ export interface Thread {
   is_pinned_faq: boolean;
   /** Real student name, or "Anonymous Student" when is_pinned_faq is true. */
   author_name: string;
+  /** ASSUMED: true when the signed-in user wrote this inquiry (drives Edit/Delete visibility). */
+  is_own: boolean;
   created_at: string;
   reply: ThreadReply | null;
 }
