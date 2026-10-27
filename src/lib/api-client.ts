@@ -19,6 +19,9 @@ const MESSAGES = {
     "The API base URL is not set. Add EXPO_PUBLIC_API_BASE_URL to your .env file.",
 } as const;
 
+/** Shown on the login screen after a 401 (playbook §6.3). */
+export const SESSION_EXPIRED_MESSAGE: string = MESSAGES.unauthorized;
+
 /** Every failed request throws this, so screens only need one kind of catch. */
 export class ApiError extends Error {
   readonly kind: ApiErrorKind;

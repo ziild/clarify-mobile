@@ -1,22 +1,44 @@
 import { useRouter } from "expo-router";
+import { useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { useAuthSession } from "@/hooks/useAuthSession";
 import { MOCK_CHANNELS, MOCK_DATA_NOTICE } from "@/mocks";
 
 export default function DashboardScreen() {
   const router = useRouter();
+  const { user, signOut } = useAuthSession();
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const firstName = user?.name.split(" ")[0] ?? "";
+  const isFaculty = user?.role === "faculty";
+
+  async function handleSignOut() {
+    setIsSigningOut(true);
+    await signOut();
+  }
 
   return (
     <ScrollView
       className="flex-1 bg-ustp-cream"
       contentContainerStyle={{ padding: 24, gap: 20 }}
     >
-      <View className="gap-1 rounded-2xl bg-ustp-navy p-5">
-        <Text className="text-2xl font-bold text-ustp-gold">Welcome back!</Text>
+      <View className="gap-2 rounded-2xl bg-ustp-navy p-5">
+        <Text className="text-2xl font-bold text-ustp-gold">
+          Welcome back, {firstName}!
+        </Text>
+        <View className="flex-row">
+          <Badge
+            label={isFaculty ? "FACULTY" : "STUDENT"}
+            variant={isFaculty ? "tag" : "department"}
+          />
+        </View>
         <Text className="text-base text-white">
-          Latest announcements and messages will appear here (Phase 4b).
+          {isFaculty
+            ? "You can publish notices in your Course Hubs and answer inquiries."
+            : "You can read notices, acknowledge them, and send inquiries."}
         </Text>
       </View>
 
@@ -41,16 +63,13 @@ export default function DashboardScreen() {
         ))}
       </View>
 
-      <View className="gap-3">
-        <Text className="text-sm text-ustp-text">
-          Temporary shortcut for testing:
-        </Text>
-        <Button
-          title="Open login screen (placeholder)"
-          variant="secondary"
-          onPress={() => router.push("/login")}
-        />
-      </View>
+      <Button
+        title="Log out"
+        loadingTitle="Logging out..."
+        variant="secondary"
+        loading={isSigningOut}
+        onPress={() => void handleSignOut()}
+      />
     </ScrollView>
   );
 }
