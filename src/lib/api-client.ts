@@ -181,3 +181,10 @@ export async function apiRequest<T>(
 
   throw new ApiError("server", MESSAGES.server, response.status);
 }
+
+/** Turns anything thrown into an ApiError, so screens never crash on unexpected errors. */
+export function toApiError(error: unknown): ApiError {
+  return error instanceof ApiError
+    ? error
+    : new ApiError("server", MESSAGES.server);
+}
