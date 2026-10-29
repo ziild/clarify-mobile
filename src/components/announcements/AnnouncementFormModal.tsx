@@ -9,8 +9,8 @@ import type { ApiError } from "@/lib/api-client";
 import { toApiError } from "@/lib/api-client";
 import { ANNOUNCEMENT_TAGS, DEPARTMENTS, USTP_COLORS } from "@/lib/constants";
 import {
-    createAnnouncement,
-    updateAnnouncement,
+  createAnnouncement,
+  updateAnnouncement,
 } from "@/lib/services/announcement-service";
 import { fetchCourseHubs } from "@/lib/services/channel-service";
 import type { Announcement, AuthUser, Channel } from "@/types/api";
@@ -72,6 +72,7 @@ export function AnnouncementFormModal({
   const [isUrgent, setIsUrgent] = useState(false);
   const [triggerSms, setTriggerSms] = useState(false);
   const [saveAsDraft, setSaveAsDraft] = useState(false);
+  const [publishNow, setPublishNow] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
@@ -81,6 +82,7 @@ export function AnnouncementFormModal({
     if (!visible) return;
     setError(null);
     setIsSubmitting(false);
+    setPublishNow(false);
     if (editing) {
       setTitle(editing.title);
       setContent(editing.content);
@@ -128,7 +130,12 @@ export function AnnouncementFormModal({
       if (editing) {
         const result = await updateAnnouncement(
           editing.id,
-          { title, content, is_urgent: isUrgent },
+          {
+            title,
+            content,
+            is_urgent: isUrgent,
+            status: publishNow ? "published" : undefined,
+          },
           author,
         );
         onSaved(result.message ?? "Announcement updated.");
@@ -160,13 +167,19 @@ export function AnnouncementFormModal({
   const canRetry =
     error !== null && (error.kind === "network" || error.kind === "server");
 
-  const submitTitle = isEditing
-    ? "Save changes"
-    : saveAsDraft
-      ? "Save draft"
-      : "Publish";
+  const isPublishingDraft =
+    isEditing && editing?.status === "draft" && publishNow;
+  const submitTitle = isPublishingDraft
+    ? "Publish"
+    : isEditing
+      ? "Save changes"
+      : saveAsDraft
+        ? "Save draft"
+        : "Publish";
   const submitLoadingTitle =
-    isEditing || saveAsDraft ? "Saving..." : "Publishing...";
+    isPublishingDraft || (!isEditing && !saveAsDraft)
+      ? "Publishing..."
+      : "Saving...";
 
   return (
     <Modal
@@ -283,6 +296,13 @@ export function AnnouncementFormModal({
             value={isUrgent}
             onValueChange={setIsUrgent}
           />
+          {isEditing && editing?.status === "draft" ? (
+            <SwitchRow
+              label="Publish this draft now"
+              value={publishNow}
+              onValueChange={setPublishNow}
+            />
+          ) : null}
           {!isEditing ? (
             <>
               <SwitchRow

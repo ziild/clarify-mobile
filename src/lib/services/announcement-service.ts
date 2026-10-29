@@ -266,16 +266,31 @@ export async function updateAnnouncement(
       );
     }
 
+    const wasDraft = item.status === "draft";
+
     if (input.title !== undefined) item.title = input.title.trim();
     if (input.content !== undefined) item.content = input.content.trim();
     if (input.is_urgent !== undefined) {
       item.is_urgent = input.is_urgent;
       item.is_pinned = input.is_urgent;
     }
-    item.is_edited = true;
+
+    const isPublishingNow = wasDraft && input.status === "published";
+    if (isPublishingNow) {
+      item.status = "published";
+      item.published_at = new Date().toISOString();
+    }
+    if (!wasDraft) {
+      item.is_edited = true;
+    }
     item.updated_at = new Date().toISOString();
 
-    return { message: "Announcement updated.", data: { ...item } };
+    return {
+      message: isPublishingNow
+        ? "Announcement published and push alerts queued."
+        : "Announcement updated.",
+      data: { ...item },
+    };
   }
 
   return apiRequest<ApiItemResponse<Announcement>>(`/announcements/${id}`, {

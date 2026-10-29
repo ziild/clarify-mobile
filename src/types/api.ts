@@ -107,6 +107,8 @@ export interface UpdateAnnouncementInput {
   title?: string;
   content?: string;
   is_urgent?: boolean;
+  /** ASSUMED: not in the playbook. Used to publish a saved draft. Confirm with the backend lead. */
+  status?: AnnouncementStatus;
 }
 
 // ───────────────────────── Devices / push (DOCUMENTED) ─────────────────────────
