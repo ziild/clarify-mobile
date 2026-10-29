@@ -13,6 +13,10 @@ interface AnnouncementCardProps {
   canAcknowledge: boolean;
   isAcknowledging: boolean;
   onAcknowledge: (id: number) => void;
+  /** Passed only to faculty for notices they published. Students never receive these. */
+  onEdit?: (announcement: Announcement) => void;
+  onDelete?: (announcement: Announcement) => void;
+  isDeleting?: boolean;
 }
 
 function tagVariant(tag: string): BadgeVariant {
@@ -37,6 +41,9 @@ export function AnnouncementCard({
   canAcknowledge,
   isAcknowledging,
   onAcknowledge,
+  onEdit,
+  onDelete,
+  isDeleting = false,
 }: AnnouncementCardProps) {
   const { read_reach: reach, publisher } = announcement;
   const attachmentName = announcement.attachment_url
@@ -113,6 +120,32 @@ export function AnnouncementCard({
             onPress={() => onAcknowledge(announcement.id)}
           />
         )
+      ) : null}
+
+      {onEdit || onDelete ? (
+        <View className="flex-row gap-3">
+          {onEdit ? (
+            <View className="flex-1">
+              <Button
+                title="Edit"
+                variant="outline"
+                disabled={isDeleting}
+                onPress={() => onEdit(announcement)}
+              />
+            </View>
+          ) : null}
+          {onDelete ? (
+            <View className="flex-1">
+              <Button
+                title="Delete"
+                loadingTitle="Deleting..."
+                variant="danger"
+                loading={isDeleting}
+                onPress={() => onDelete(announcement)}
+              />
+            </View>
+          ) : null}
+        </View>
       ) : null}
     </View>
   );

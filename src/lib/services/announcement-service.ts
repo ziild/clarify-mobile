@@ -3,14 +3,17 @@ import { USE_MOCKS } from "@/lib/config";
 import { mockDelay } from "@/lib/mock-delay";
 import { MOCK_ANNOUNCEMENTS } from "@/mocks";
 import type {
-    Announcement,
-    AnnouncementQuery,
-    ApiItemResponse,
-    ApiListResponse,
-    UserRole,
+  Announcement,
+  AnnouncementQuery,
+  ApiItemResponse,
+  ApiListResponse,
+  AuthUser,
+  CreateAnnouncementInput,
+  UpdateAnnouncementInput,
+  UserRole,
 } from "@/types/api";
 
-const PER_PAGE = 10;
+const PER_PAGE = 3;
 
 // A copy, so acknowledging in mock mode does not change the original mock file.
 // Mock acknowledgments are kept in memory only and reset when the app fully restarts.
@@ -121,4 +124,184 @@ export async function acknowledgeAnnouncement(
     { method: "POST" },
   );
   return response.data;
+}
+
+// ───────────────────────── Faculty actions (Phase 4c) ─────────────────────────
+
+/** Mock Course Hub that Aki is NOT assigned to (lets you test the playbook's 422 example). */
+const MOCK_UNASSIGNED_CHANNEL_ID = 9;
+
+// First message is the playbook's own 403 example (§6.3).
+const FORBIDDEN_PUBLISH_MESSAGE =
+  "Access Denied: Only authorized faculty assigned to this Course Hub can publish announcements.";
+const FORBIDDEN_EDIT_MESSAGE =
+  "Access Denied: You can only change notices you published.";
+
+/** Builds the multipart body for POST /announcements (playbook §6.1). Attachment comes in step 2. */
+function buildAnnouncementFormData(input: CreateAnnouncementInput): FormData {
+  const formData = new FormData();
+  formData.append("channel_id", String(input.channel_id));
+  formData.append("title", input.title);
+  formData.append("content", input.content);
+  input.tags.forEach((tag) => formData.append("tags[]", tag));
+  // "1" and "0" because Laravel's boolean rule rejects the text "true"/"false" in form data (ASSUMED).
+  formData.append("is_urgent", input.is_urgent ? "1" : "0");
+  formData.append(
+    "trigger_sms_fallback",
+    input.trigger_sms_fallback ? "1" : "0",
+  );
+  formData.append("status", input.status);
+  return formData;
+}
+
+/** POST /announcements. Response shape follows the playbook sample: { message, data }. */
+export async function createAnnouncement(
+  input: CreateAnnouncementInput,
+  author: AuthUser,
+): Promise<ApiItemResponse<Announcement>> {
+  if (USE_MOCKS) {
+    await mockDelay(700);
+
+    if (author.role !== "faculty") {
+      throw new ApiError("forbidden", FORBIDDEN_PUBLISH_MESSAGE, 403);
+    }
+
+    const fieldErrors: Record<string, string[]> = {};
+    if (!input.channel_id) {
+      fieldErrors.channel_id = ["The channel id field is required."];
+    } else if (input.channel_id === MOCK_UNASSIGNED_CHANNEL_ID) {
+      fieldErrors.channel_id = [
+        "You are not assigned to publish in this course hub.",
+      ];
+    }
+    if (input.title.trim().length === 0) {
+      fieldErrors.title = ["The title field is required."];
+    }
+    if (input.content.trim().length === 0) {
+      fieldErrors.content = ["The content field is required."];
+    }
+    if (Object.keys(fieldErrors).length > 0) {
+      throw new ApiError(
+        "validation",
+        "Please check the highlighted fields.",
+        422,
+        fieldErrors,
+      );
+    }
+
+    const now = new Date().toISOString();
+    const created: Announcement = {
+      id: Math.max(0, ...mockStore.map((item) => item.id)) + 1,
+      channel_id: input.channel_id,
+      title: input.title.trim(),
+      content: input.content.trim(),
+      attachment_url: null,
+      tags: input.tags,
+      is_urgent: input.is_urgent,
+      is_pinned: input.is_urgent, // playbook: "Mark as Urgent (Pin + Push Alert)"
+      status: input.status,
+      is_edited: false,
+      published_at: now,
+      updated_at: now,
+      read_reach: {
+        acknowledged_count: 0,
+        enrolled_total: 42,
+        percentage: 0,
+        has_current_user_acknowledged: false,
+      },
+      publisher: {
+        id: author.id,
+        name: author.name,
+        role: author.role,
+        department: author.academic_profile?.department ?? "",
+      },
+    };
+    mockStore.unshift(created);
+
+    return {
+      message:
+        input.status === "draft"
+          ? "Draft saved."
+          : "Announcement published and push alerts queued.",
+      data: { ...created },
+    };
+  }
+
+  return apiRequest<ApiItemResponse<Announcement>>("/announcements", {
+    method: "POST",
+    formData: buildAnnouncementFormData(input),
+  });
+}
+
+/** PATCH /announcements/{id}. The server logs the audit entry and sets is_edited (NFR-03). */
+export async function updateAnnouncement(
+  id: number,
+  input: UpdateAnnouncementInput,
+  author: AuthUser,
+): Promise<ApiItemResponse<Announcement>> {
+  if (USE_MOCKS) {
+    await mockDelay(600);
+
+    const item = mockStore.find((announcement) => announcement.id === id);
+    if (!item) {
+      throw new ApiError("server", "Announcement not found.", 404);
+    }
+    if (author.role !== "faculty" || item.publisher.id !== author.id) {
+      throw new ApiError("forbidden", FORBIDDEN_EDIT_MESSAGE, 403);
+    }
+
+    const fieldErrors: Record<string, string[]> = {};
+    if (input.title !== undefined && input.title.trim().length === 0) {
+      fieldErrors.title = ["The title field is required."];
+    }
+    if (input.content !== undefined && input.content.trim().length === 0) {
+      fieldErrors.content = ["The content field is required."];
+    }
+    if (Object.keys(fieldErrors).length > 0) {
+      throw new ApiError(
+        "validation",
+        "Please check the highlighted fields.",
+        422,
+        fieldErrors,
+      );
+    }
+
+    if (input.title !== undefined) item.title = input.title.trim();
+    if (input.content !== undefined) item.content = input.content.trim();
+    if (input.is_urgent !== undefined) {
+      item.is_urgent = input.is_urgent;
+      item.is_pinned = input.is_urgent;
+    }
+    item.is_edited = true;
+    item.updated_at = new Date().toISOString();
+
+    return { message: "Announcement updated.", data: { ...item } };
+  }
+
+  return apiRequest<ApiItemResponse<Announcement>>(`/announcements/${id}`, {
+    method: "PATCH",
+    body: input,
+  });
+}
+
+/** DELETE /announcements/{id}. */
+export async function deleteAnnouncement(
+  id: number,
+  author: AuthUser,
+): Promise<void> {
+  if (USE_MOCKS) {
+    await mockDelay(500);
+
+    const item = mockStore.find((announcement) => announcement.id === id);
+    if (!item) {
+      throw new ApiError("server", "Announcement not found.", 404);
+    }
+    if (author.role !== "faculty" || item.publisher.id !== author.id) {
+      throw new ApiError("forbidden", FORBIDDEN_EDIT_MESSAGE, 403);
+    }
+    mockStore.splice(mockStore.indexOf(item), 1);
+    return;
+  }
+
+  await apiRequest<unknown>(`/announcements/${id}`, { method: "DELETE" });
 }
