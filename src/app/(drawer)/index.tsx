@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 
+import { PushStatusCard } from "@/components/notifications/PushStatusCard";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { useAuthSession } from "@/hooks/useAuthSession";
@@ -62,6 +63,8 @@ export default function DashboardScreen() {
           />
         ))}
       </View>
+
+      <PushStatusCard />
 
       <Button
         title="Log out"
