@@ -1,5 +1,6 @@
 import { ApiError, apiRequest } from "@/lib/api-client";
 import { USE_MOCKS } from "@/lib/config";
+import { ANONYMOUS_STUDENT_LABEL } from "@/lib/constants";
 import { mockDelay } from "@/lib/mock-delay";
 import { MOCK_THREADS } from "@/mocks";
 import type {
@@ -7,6 +8,7 @@ import type {
     ApiListResponse,
     AuthUser,
     CreateThreadInput,
+    ReplyInput,
     Thread,
     ThreadQuery,
     UpdateThreadInput,
@@ -194,4 +196,102 @@ export async function deleteThread(
   }
 
   await apiRequest<unknown>(`/threads/${id}`, { method: "DELETE" });
+}
+
+// ───────────────────────── Faculty actions (Phase 4d, step 3) ─────────────────────────
+
+const FORBIDDEN_REPLY_MESSAGE =
+  "Access Denied: Only authorized faculty assigned to this Course Hub can reply to inquiries.";
+const CANNOT_PUBLISH_FAQ_MESSAGE =
+  "Only resolved inquiries with a reply can be published to the Class FAQs.";
+
+/**
+ * POST /threads/{id}/replies (playbook §6.5). Real response shape ASSUMED: { message?, data: Thread }.
+ * The app always sends pin_to_faq: false and uses the separate convert-faq call to publish.
+ */
+export async function replyToThread(
+  id: number,
+  input: ReplyInput,
+  author: AuthUser,
+): Promise<ApiItemResponse<Thread>> {
+  if (USE_MOCKS) {
+    await mockDelay(600);
+
+    if (author.role !== "faculty") {
+      throw new ApiError("forbidden", FORBIDDEN_REPLY_MESSAGE, 403);
+    }
+    const thread = mockThreadStore.find((item) => item.id === id);
+    if (!thread) {
+      throw new ApiError("server", "Inquiry not found.", 404);
+    }
+    if (input.content.trim().length === 0) {
+      throw new ApiError(
+        "validation",
+        "Please check the highlighted fields.",
+        422,
+        {
+          content: ["The content field is required."],
+        },
+      );
+    }
+
+    // A thread shows one reply block (ASSUMED), so a new reply replaces the previous one.
+    thread.reply = {
+      content: input.content.trim(),
+      author_name: author.name,
+      created_at: new Date().toISOString(),
+    };
+    if (input.mark_resolved) {
+      thread.status = "resolved";
+    }
+
+    return {
+      message: input.mark_resolved
+        ? "Reply sent and inquiry marked as resolved."
+        : "Reply sent.",
+      data: { ...thread },
+    };
+  }
+
+  return apiRequest<ApiItemResponse<Thread>>(`/threads/${id}/replies`, {
+    method: "POST",
+    body: input,
+  });
+}
+
+/**
+ * POST /threads/{id}/convert-faq (playbook FR-07). The server hides the student's identity.
+ * Real response shape ASSUMED: { message?, data: Thread }.
+ */
+export async function convertThreadToFaq(
+  id: number,
+  author: AuthUser,
+): Promise<ApiItemResponse<Thread>> {
+  if (USE_MOCKS) {
+    await mockDelay(600);
+
+    if (author.role !== "faculty") {
+      throw new ApiError("forbidden", FORBIDDEN_REPLY_MESSAGE, 403);
+    }
+    const thread = mockThreadStore.find((item) => item.id === id);
+    if (!thread) {
+      throw new ApiError("server", "Inquiry not found.", 404);
+    }
+    if (thread.status !== "resolved" || thread.reply === null) {
+      throw new ApiError("validation", CANNOT_PUBLISH_FAQ_MESSAGE, 422);
+    }
+
+    thread.is_pinned_faq = true;
+    thread.author_name = ANONYMOUS_STUDENT_LABEL; // the real backend masks this (ThreadResource)
+    thread.is_private = false; // ASSUMED: a published FAQ is public to the Course Hub
+    return {
+      message:
+        "Published to Class FAQs. The student is shown as Anonymous Student.",
+      data: { ...thread },
+    };
+  }
+
+  return apiRequest<ApiItemResponse<Thread>>(`/threads/${id}/convert-faq`, {
+    method: "POST",
+  });
 }

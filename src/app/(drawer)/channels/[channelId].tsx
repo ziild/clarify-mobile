@@ -6,6 +6,7 @@ import { Alert, ScrollView, Text, View } from "react-native";
 import { AnnouncementCard } from "@/components/announcements/AnnouncementCard";
 import { AnnouncementCardSkeleton } from "@/components/announcements/AnnouncementCardSkeleton";
 import { Chip } from "@/components/announcements/AnnouncementFilterBar";
+import { FacultyReplyPanel } from "@/components/threads/FacultyReplyPanel";
 import { InquiryFormModal } from "@/components/threads/InquiryFormModal";
 import { QaThreadCard } from "@/components/threads/QaThreadCard";
 import { ThreadCardSkeleton } from "@/components/threads/ThreadCardSkeleton";
@@ -40,7 +41,7 @@ interface ThreadPanelProps {
   emptyTitle: string;
   emptyMessage: string;
   defaultExpanded: boolean;
-  /** Extra controls inside each expanded card (for example the student's Edit and Delete). */
+  /** Extra controls inside each expanded card (student Edit/Delete, faculty reply panel). */
   renderActions?: (thread: Thread) => ReactNode;
 }
 
@@ -210,6 +211,31 @@ function CourseHubContent({
     );
   }
 
+  // ───── Faculty actions ─────
+
+  function handleThreadChanged(message: string) {
+    setSuccessMessage(message);
+    setDeleteError(null);
+    threads.reload();
+  }
+
+  /** Students get Edit/Delete on their own questions; faculty get the reply panel. */
+  function renderThreadActions(thread: Thread): ReactNode {
+    if (user.role === "student") {
+      return renderStudentActions(thread);
+    }
+    if (user.role === "faculty") {
+      return (
+        <FacultyReplyPanel
+          thread={thread}
+          author={user}
+          onChanged={handleThreadChanged}
+        />
+      );
+    }
+    return null;
+  }
+
   return (
     <>
       <ScrollView
@@ -311,7 +337,7 @@ function CourseHubContent({
               emptyTitle="No questions yet"
               emptyMessage={`Inquiries for ${channelName} will appear here.`}
               defaultExpanded={false}
-              renderActions={renderStudentActions}
+              renderActions={renderThreadActions}
             />
           </>
         ) : null}
