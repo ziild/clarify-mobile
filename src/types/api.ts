@@ -239,3 +239,11 @@ export interface Instructor {
   campus: string | null;
   department: string;
 }
+
+// ───────────────────────── Profile (request DOCUMENTED, response ASSUMED) ─────────────────────────
+
+/** POST /profile as multipart form data with _method "PATCH" (playbook §6.5, FR-06). */
+export interface UpdateProfileInput {
+  contact_number: string;
+  avatar?: PickedFile;
+}

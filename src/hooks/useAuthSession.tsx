@@ -1,17 +1,17 @@
 import type { ReactNode } from "react";
 import {
-    createContext,
-    useCallback,
-    useContext,
-    useEffect,
-    useMemo,
-    useState,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
 } from "react";
 
 import {
-    ApiError,
-    SESSION_EXPIRED_MESSAGE,
-    setUnauthorizedHandler,
+  ApiError,
+  SESSION_EXPIRED_MESSAGE,
+  setUnauthorizedHandler,
 } from "@/lib/api-client";
 import { fetchCurrentUser, login, logout } from "@/lib/services/auth-service";
 import { clearToken, loadToken, saveToken } from "@/lib/token-storage";
@@ -24,6 +24,8 @@ interface SessionValue {
   user: AuthUser | null;
   /** Set after a 401, so the login screen can explain why the user was sent back. */
   sessionExpiredMessage: string | null;
+  /** Replaces the signed-in user after a profile change. */
+  updateUser: (user: AuthUser) => void;
   signIn: (request: LoginRequest) => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -97,9 +99,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setStatus("signedOut");
   }, []);
 
+  const updateUser = useCallback((nextUser: AuthUser) => {
+    setUser(nextUser);
+  }, []);
+
   const value = useMemo<SessionValue>(
-    () => ({ status, user, sessionExpiredMessage, signIn, signOut }),
-    [status, user, sessionExpiredMessage, signIn, signOut],
+    () => ({
+      status,
+      user,
+      sessionExpiredMessage,
+      signIn,
+      signOut,
+      updateUser,
+    }),
+    [status, user, sessionExpiredMessage, signIn, signOut, updateUser],
   );
 
   return (

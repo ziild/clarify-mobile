@@ -33,6 +33,12 @@
           "imageWidth": 76
         }
       ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "ClariFy accesses your photos so you can choose a profile picture."
+        }
+      ],
       "expo-web-browser",
       "expo-secure-store"
     ],
