@@ -38,7 +38,7 @@ interface SwitchRowProps {
   onValueChange: (value: boolean) => void;
 }
 
-function SwitchRow({ label, value, onValueChange }: SwitchRowProps) {
+export function SwitchRow({ label, value, onValueChange }: SwitchRowProps) {
   return (
     <View className="min-h-12 flex-row items-center justify-between gap-3">
       <Text className="flex-1 text-base text-ustp-text">{label}</Text>
