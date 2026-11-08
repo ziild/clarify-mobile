@@ -89,6 +89,7 @@ async function registerForPush(): Promise<RegistrationResult> {
       projectId ? { projectId } : undefined,
     );
     token = response.data;
+    if (__DEV__) console.log("Expo push token:", token);
   } catch (caught) {
     const reason = caught instanceof Error ? caught.message : "Unknown error";
     return {

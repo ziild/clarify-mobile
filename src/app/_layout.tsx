@@ -5,11 +5,12 @@ import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
+import { UnsupportedRoleScreen } from "@/components/layout/UnsupportedRoleScreen";
 import { SessionProvider, useAuthSession } from "@/hooks/useAuthSession";
 import { USTP_COLORS } from "@/lib/constants";
 
 function RootNavigator() {
-  const { status } = useAuthSession();
+  const { status, user } = useAuthSession();
 
   // While we check for a saved login, show a spinner instead of flashing the login screen.
   if (status === "loading") {
@@ -21,6 +22,16 @@ function RootNavigator() {
   }
 
   const isSignedIn = status === "signedIn";
+
+  // The mobile app covers students and faculty only. Other roles are pointed to the web portal.
+  if (
+    isSignedIn &&
+    user &&
+    user.role !== "student" &&
+    user.role !== "faculty"
+  ) {
+    return <UnsupportedRoleScreen user={user} />;
+  }
 
   return (
     <Stack screenOptions={{ headerShown: false }}>

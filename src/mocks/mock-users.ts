@@ -31,7 +31,22 @@ export const MOCK_FACULTY: AuthUser = {
   avatar_url: null,
 };
 
-/** Fake login accounts for the mock login (Phase 4a). Never use real credentials here. */
+/** Invented account, only used to test what a non-mobile role sees. */
+export const MOCK_DEPT_HEAD: AuthUser = {
+  id: 10600,
+  name: "Elena Marquez",
+  role: "dept_head",
+  academic_profile: {
+    college: "CITC",
+    department: "CITC",
+    program: null,
+    year_level: null,
+  },
+  contact_number: "09191234567",
+  avatar_url: null,
+};
+
+/** Fake login accounts for the mock login. Never use real credentials here. */
 export const MOCK_LOGIN_ACCOUNTS: ReadonlyArray<{
   institutional_id: string;
   password: string;
@@ -46,5 +61,10 @@ export const MOCK_LOGIN_ACCOUNTS: ReadonlyArray<{
     institutional_id: "1010101010",
     password: "mock-password",
     user: MOCK_FACULTY,
+  },
+  {
+    institutional_id: "3030303030",
+    password: "mock-password",
+    user: MOCK_DEPT_HEAD,
   },
 ];
